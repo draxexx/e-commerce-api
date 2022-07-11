@@ -27,6 +27,43 @@ router.get("/", verifyTokenAndAdmin, async (req, res, next) => {
   }
 });
 
+// get user by id
+router.get("/find/:id", verifyTokenAndAdmin, async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id);
+    const { password, ...others } = user._doc;
+    res.status(200).json(others);
+  } catch (error) {
+    res.status(500).json(error);
+  }
+});
+
+// get user stats
+router.get("/stats", verifyTokenAndAdmin, async (req, res, next) => {
+  const date = new Date();
+  const lastYear = new Date(date.setFullYear(date.getFullYear() - 1));
+
+  try {
+    const data = await User.aggregate([
+      {
+        $match: { createdAt: { $gte: lastYear } },
+      },
+      {
+        $project: { month: { $month: "$createdAt" } },
+      },
+      {
+        $group: {
+          _id: "$month",
+          total: { $sum: 1 },
+        },
+      },
+    ]);
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json(error);
+  }
+});
+
 // update user
 router.put("/:id", verifyTokenAndAuthorization, async (req, res, next) => {
   // check there is a password in the body
